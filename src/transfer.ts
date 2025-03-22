@@ -1,6 +1,11 @@
 // Import environment variables
 import "dotenv/config";
-import { createWalletClient, http, encodeFunctionData } from "viem";
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  encodeFunctionData,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, avalancheFuji } from "viem/chains";
 import axios from "axios";
@@ -52,6 +57,16 @@ const avalancheClient = createWalletClient({
   account,
 });
 
+// Set up public clients
+const sepoliaPublicClient = createPublicClient({
+  chain: sepolia,
+  transport: http(),
+});
+const avalanchePublicClient = createPublicClient({
+  chain: avalancheFuji,
+  transport: http(),
+});
+
 async function approveUSDC() {
   console.log("Approving USDC transfer...");
   const approveTx = await sepoliaClient.sendTransaction({
@@ -74,6 +89,11 @@ async function approveUSDC() {
     }),
   });
   console.log(`USDC Approval Tx: ${approveTx}`);
+  console.log("Waiting for approval tx to be mined...");
+  await sepoliaPublicClient.waitForTransactionReceipt({
+    hash: approveTx,
+  });
+  console.log("Approval tx mined!\n");
 }
 
 async function burnUSDC() {
@@ -111,6 +131,11 @@ async function burnUSDC() {
     }),
   });
   console.log(`Burn Tx: ${burnTx}`);
+  console.log("Waiting for burn tx to be mined...");
+  await sepoliaPublicClient.waitForTransactionReceipt({
+    hash: burnTx,
+  });
+  console.log("Burn tx mined!\n");
   return burnTx;
 }
 
@@ -162,6 +187,11 @@ async function mintUSDC(attestation: Attestation) {
     }),
   });
   console.log(`Mint Tx: ${mintTx}`);
+  console.log("Waiting for mint tx to be mined...");
+  await avalanchePublicClient.waitForTransactionReceipt({
+    hash: mintTx,
+  });
+  console.log("Mint tx mined!\n");
 }
 
 async function main() {
