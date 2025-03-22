@@ -107,6 +107,17 @@ Relay results:
 USDC transfer with hook completed!
 ```
 
+## Hardhat task
+
+### selector
+
+```
+bun x hardhat selector "processTransfer(uint256)"
+
+# Output
+Selector for processTransfer(uint256): 0x84159b60
+```
+
 ## Deployed Contract
 
 ### Avalanche Fuji
