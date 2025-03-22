@@ -2,7 +2,8 @@
   "name": "cctp-sandbox",
   "private": true,
   "scripts": {
-    "deploy:sepolia:simple-hook-target": "hardhat ignition deploy ignition/modules/SimpleHookTarget.ts --network sepolia"
+    "deploy:avalanche-fuji:simple-hook-target": "hardhat ignition deploy ignition/modules/SimpleHookTarget.ts --network avalancheFuji",
+    "deploy:avalanche-fuji:cctp-hook-wrapper": "hardhat ignition deploy ignition/modules/CCTPHookWrapper.ts --network avalancheFuji"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

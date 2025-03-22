@@ -40,8 +40,8 @@ const account = privateKeyToAccount(`0x${PRIVATE_KEY}`);
 const ETHEREUM_SEPOLIA_USDC = "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238";
 const ETHEREUM_SEPOLIA_TOKEN_MESSENGER =
   "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa";
-const AVALANCHE_FUJI_MESSAGE_TRANSMITTER =
-  "0xe737e5cebeeba77efe34d4aa090756590b1ce275";
+// const AVALANCHE_FUJI_MESSAGE_TRANSMITTER =
+//   "0xe737e5cebeeba77efe34d4aa090756590b1ce275";
 
 // Hook-related Addresses
 const AVALANCHE_FUJI_HOOK_WRAPPER = process.env.HOOK_WRAPPER_ADDRESS; // Set your deployed hook wrapper address in .env

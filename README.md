@@ -1,12 +1,17 @@
 # cctp-sandbox
 
+
+## Getting Started
+
 To install dependencies:
 
 ```bash
 bun install
 ```
 
-To run:
+### Run scripts
+
+#### Cross-chain transfer
 
 ```bash
 bun run ./src/transfer.ts
@@ -44,5 +49,65 @@ Mint tx mined!
 
 USDC transfer completed!
 ```
+
+#### Cross-chain transfer with Hook
+
+```bash
+bun run ./src/transferWithHook.ts
+```
+
+example:
+
+```
+bun run ./src/transferWithHook.ts
+
+================================================
+Starting USDC transfer from Ethereum Sepolia to Avalanche Fuji with Hook...
+Make sure you have enough ETH, USDC in your wallet on Ethereum Sepolia
+and also AVAX in your wallet on Avalanche Fuji
+Hook wrapper address: 0x38404A0Ab62E635b8d675aFca83f8e29029B81Cd
+Hook target address: 0xa8A5CCcEf6E13A0679E2c5482f025179601F9c28
+================================================
+
+1. Checking current USDC allowance...
+Current allowance: 9999500000
+Allowance is already sufficient. Skipping approval.
+
+2. Burning USDC on Ethereum Sepolia with Hook...
+Burn Tx: 0x887d1497d1ae43e6ce356ca1309da587e7adedd42dbeb913a0d983cfac9d6ceb
+Waiting for burn tx to be mined...
+Burn tx mined!
+
+3. Retrieving attestation...
+Waiting for attestation...
+Waiting for attestation...
+Waiting for attestation...
+Attestation retrieved successfully!
+
+4. Calling CCTPHookWrapper.relay() on Avalanche Fuji...
+Mint Tx: 0xf34379809506fd17488d24546ab1e5b642ae39cd0ddfe854709f50b67ad07f80
+Waiting for mint tx to be mined...
+Mint tx mined!
+
+Relay results:
+  Tokens successfully minted
+  Hook execution completed
+USDC transfer with hook completed!
+```
+
+## Deployed Contract
+
+### Avalanche Fuji
+
+| contract name | address |
+| --- | --- |
+| Message Transmitter *1 | 0xe737e5cebeeba77efe34d4aa090756590b1ce275 |
+| Hook Wrapper | 0x38404A0Ab62E635b8d675aFca83f8e29029B81Cd |
+| Hook Target | 0xa8A5CCcEf6E13A0679E2c5482f025179601F9c28 |
+
+
+*1. deployed by Circle
+
+---
 
 This project was created using `bun init` in bun v1.2.5. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
