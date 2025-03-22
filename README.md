@@ -3,11 +3,23 @@
 
 ## Getting Started
 
-To install dependencies:
+1. Install dependencies:
 
 ```bash
 bun install
 ```
+
+2. Copy `.env.example` to `.env`
+
+```bash
+cp .env.example .env
+```
+
+don't forget to add your private key and make sure your address have enough ETH, USDC in your wallet on Ethereum Sepolia
+and also AVAX in your wallet on Avalanche Fuji.
+
+3. Run scripts like the below
+
 
 ### Run scripts
 
