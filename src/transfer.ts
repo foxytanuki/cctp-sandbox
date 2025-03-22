@@ -1,4 +1,10 @@
-// Import environment variables
+/*
+ * This script transfers USDC from Ethereum Sepolia to Avalanche Fuji using the CCTP protocol.
+ * It first checks the current allowance of USDC, then burns USDC on Ethereum Sepolia, retrieves an attestation,
+ * and finally mints USDC on Avalanche Fuji.
+ *
+ * Original source: https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche#transferjs
+ */
 import "dotenv/config";
 import {
   createWalletClient,
