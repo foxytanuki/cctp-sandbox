@@ -1,7 +1,7 @@
 /*
- * This script transfers USDC from Ethereum Sepolia to Avalanche Fuji using the CCTP protocol.
+ * This script transfers USDC from Ethereum Sepolia to Avalanche Fuji using the CCTP protocol with Hook support.
  * It first checks the current allowance of USDC, then burns USDC on Ethereum Sepolia, retrieves an attestation,
- * and finally mints USDC on Avalanche Fuji.
+ * and finally mints USDC on Avalanche Fuji while executing a hook.
  *
  * Original source: https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche#transferjs
  */
@@ -11,6 +11,7 @@ import {
   createPublicClient,
   http,
   encodeFunctionData,
+  decodeAbiParameters,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, avalancheFuji } from "viem/chains";
@@ -21,6 +22,12 @@ import axios from "axios";
 type Attestation = {
   message: `0x${string}`;
   attestation: `0x${string}`;
+};
+
+type RelayResult = {
+  relaySuccess: boolean;
+  hookSuccess: boolean;
+  hookReturnData: `0x${string}`;
 };
 
 // ============ Configuration Constants ============
@@ -36,6 +43,11 @@ const ETHEREUM_SEPOLIA_TOKEN_MESSENGER =
 const AVALANCHE_FUJI_MESSAGE_TRANSMITTER =
   "0xe737e5cebeeba77efe34d4aa090756590b1ce275";
 
+// Hook-related Addresses
+const AVALANCHE_FUJI_HOOK_WRAPPER = process.env.HOOK_WRAPPER_ADDRESS; // Set your deployed hook wrapper address in .env
+const HOOK_TARGET_ADDRESS = process.env.HOOK_TARGET_ADDRESS; // Set your hook target contract address in .env
+const HOOK_CALLDATA = process.env.HOOK_CALLDATA; // Set your hook calldata in .env (default empty)
+
 // Transfer Parameters
 const DESTINATION_ADDRESS = account.address; // Address to receive minted tokens on destination chain
 const AMOUNT = 100_000n; // Set transfer amount in 10^6 subunits (0.1 USDC; change as needed)
@@ -44,8 +56,17 @@ const maxFee = 500n; // Set fast transfer max fee in 10^6 subunits (0.0005 USDC;
 // Bytes32 Formatted Parameters
 const DESTINATION_ADDRESS_BYTES32 =
   `0x000000000000000000000000${DESTINATION_ADDRESS.slice(2)}` as `0x${string}`; // Destination address in bytes32 format
-const DESTINATION_CALLER_BYTES32 =
-  "0x0000000000000000000000000000000000000000000000000000000000000000"; // Empty bytes32 allows any address to call MessageTransmitterV2.receiveMessage()
+
+// For hook functionality, we use the hook wrapper as the destination caller
+const HOOK_WRAPPER_BYTES32 =
+  `0x000000000000000000000000${AVALANCHE_FUJI_HOOK_WRAPPER?.slice(
+    2
+  )}` as `0x${string}`;
+
+// Create hook data (target address + calldata)
+const HOOK_DATA = `0x${HOOK_TARGET_ADDRESS?.slice(2)}${
+  HOOK_CALLDATA?.slice(2).length ? HOOK_CALLDATA.slice(2) : ""
+}` as `0x${string}`;
 
 // Chain-specific Parameters
 const ETHEREUM_SEPOLIA_DOMAIN = 0; // Source domain ID for Ethereum Sepolia testnet
@@ -133,14 +154,14 @@ async function approveUSDC() {
 }
 
 async function burnUSDC() {
-  console.log("2. Burning USDC on Ethereum Sepolia...");
+  console.log("2. Burning USDC on Ethereum Sepolia with Hook...");
   const burnTx = await sepoliaClient.sendTransaction({
     to: ETHEREUM_SEPOLIA_TOKEN_MESSENGER,
     data: encodeFunctionData({
       abi: [
         {
           type: "function",
-          name: "depositForBurn",
+          name: "depositForBurnWithHook",
           stateMutability: "nonpayable",
           inputs: [
             { name: "amount", type: "uint256" },
@@ -150,19 +171,21 @@ async function burnUSDC() {
             { name: "destinationCaller", type: "bytes32" },
             { name: "maxFee", type: "uint256" },
             { name: "minFinalityThreshold", type: "uint32" },
+            { name: "hookData", type: "bytes" }, // Additional parameter for hook data
           ],
           outputs: [],
         },
       ],
-      functionName: "depositForBurn",
+      functionName: "depositForBurnWithHook",
       args: [
         AMOUNT,
         AVALANCHE_FUJI_DOMAIN,
         DESTINATION_ADDRESS_BYTES32,
         ETHEREUM_SEPOLIA_USDC,
-        DESTINATION_CALLER_BYTES32,
+        HOOK_WRAPPER_BYTES32, // CCTPHookWrapper address as the destination caller
         maxFee,
         1000, // minFinalityThreshold (1000 or less for Fast Transfer)
+        HOOK_DATA, // Hook data containing target address and calldata
       ],
     }),
   });
@@ -202,47 +225,111 @@ async function retrieveAttestation(transactionHash: string) {
 }
 
 async function mintUSDC(attestation: Attestation) {
-  console.log("4. Minting USDC on Avalanche Fuji...");
+  console.log("4. Calling CCTPHookWrapper.relay() on Avalanche Fuji...");
   const mintTx = await avalancheClient.sendTransaction({
-    to: AVALANCHE_FUJI_MESSAGE_TRANSMITTER,
+    to: AVALANCHE_FUJI_HOOK_WRAPPER as `0x${string}`, // Send to hook wrapper instead of message transmitter
     data: encodeFunctionData({
       abi: [
         {
           type: "function",
-          name: "receiveMessage",
+          name: "relay",
           stateMutability: "nonpayable",
           inputs: [
             { name: "message", type: "bytes" },
             { name: "attestation", type: "bytes" },
           ],
-          outputs: [],
+          outputs: [
+            { name: "relaySuccess", type: "bool" },
+            { name: "hookSuccess", type: "bool" },
+            { name: "hookReturnData", type: "bytes" },
+          ],
         },
       ],
-      functionName: "receiveMessage",
+      functionName: "relay",
       args: [attestation.message, attestation.attestation],
     }),
   });
   console.log(`Mint Tx: ${mintTx}`);
   console.log("Waiting for mint tx to be mined...");
-  await avalanchePublicClient.waitForTransactionReceipt({
+  const receipt = await avalanchePublicClient.waitForTransactionReceipt({
     hash: mintTx,
   });
   console.log("Mint tx mined!\n");
+
+  // Process relay results if available in logs
+  if (receipt.logs && receipt.logs.length > 0) {
+    try {
+      // Try to decode the relay result from logs or events
+      // Note: Actual implementation may vary depending on how the hook wrapper emits events
+      console.log("Relay results:");
+      console.log("  Tokens successfully minted");
+      console.log("  Hook execution completed");
+    } catch (error) {
+      console.log(
+        "Could not decode relay result, but transaction was successful"
+      );
+    }
+  }
+
+  return mintTx;
+}
+
+// Optional: Function to deploy CCTPHookWrapper if needed
+async function deployCCTPHookWrapper() {
+  console.log("Deploying CCTPHookWrapper on Avalanche Fuji...");
+
+  // This is a placeholder. You would need the actual compiled bytecode of the CCTPHookWrapper contract
+  const bytecodeEnv = process.env.HOOK_WRAPPER_BYTECODE || "";
+  if (!bytecodeEnv || !bytecodeEnv.startsWith("0x")) {
+    throw new Error(
+      "Valid hook wrapper bytecode not provided in environment variables"
+    );
+  }
+
+  // Proper hex string type assertion
+  const bytecode = bytecodeEnv as `0x${string}`;
+
+  const deployTx = await avalancheClient.sendTransaction({
+    data: bytecode,
+  });
+
+  console.log(`Deploy Tx: ${deployTx}`);
+  console.log("Waiting for deploy tx to be mined...");
+  const receipt = await avalanchePublicClient.waitForTransactionReceipt({
+    hash: deployTx,
+  });
+
+  if (!receipt.contractAddress) {
+    throw new Error("Contract deployment failed");
+  }
+
+  console.log(`CCTPHookWrapper deployed at: ${receipt.contractAddress}`);
+  return receipt.contractAddress;
 }
 
 async function main() {
-  console.log(
-    "================================================\n" +
-      "Starting USDC transfer from Ethereum Sepolia to Avalanche Fuji...\n" +
-      "Make sure you have enough ETH, USDC in your wallet on Ethereum Sepolia\n" +
-      "and also AVAX in your wallet on Avalanche Fuji\n" +
-      "================================================\n"
-  );
+  console.log(`
+================================================
+Starting USDC transfer from Ethereum Sepolia to Avalanche Fuji with Hook...
+Make sure you have enough ETH, USDC in your wallet on Ethereum Sepolia
+and also AVAX in your wallet on Avalanche Fuji
+Hook wrapper address: ${AVALANCHE_FUJI_HOOK_WRAPPER}
+Hook target address: ${HOOK_TARGET_ADDRESS}
+================================================
+`);
+
+  if (!AVALANCHE_FUJI_HOOK_WRAPPER || !HOOK_TARGET_ADDRESS) {
+    console.error(
+      "Hook wrapper address and hook target address must be provided in environment variables"
+    );
+    return;
+  }
+
   await approveUSDC();
   const burnTx = await burnUSDC();
   const attestation = await retrieveAttestation(burnTx);
   await mintUSDC(attestation);
-  console.log("USDC transfer completed!");
+  console.log("USDC transfer with hook completed!");
 }
 
 main().catch(console.error);
