@@ -1,9 +1,13 @@
 {
   "name": "cctp-sandbox",
   "private": true,
+  "scripts": {
+    "deploy:sepolia:simple-hook-target": "hardhat ignition deploy ignition/modules/SimpleHookTarget.ts --network sepolia"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
+    "@openzeppelin/contracts": "3.4.2",
     "@types/bun": "latest",
     "hardhat": "^2.22.19"
   },

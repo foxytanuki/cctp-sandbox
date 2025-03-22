@@ -17,11 +17,11 @@
  */
 pragma solidity 0.7.6;
 
-import {IReceiverV2} from "../interfaces/v2/IReceiverV2.sol";
-import {TypedMemView} from "@memview-sol/contracts/TypedMemView.sol";
-import {MessageV2} from "../messages/v2/MessageV2.sol";
-import {BurnMessageV2} from "../messages/v2/BurnMessageV2.sol";
-import {Ownable2Step} from "../roles/Ownable2Step.sol";
+import {IReceiverV2} from "./lib/interfaces/IReceiverV2.sol";
+import {TypedMemView} from "./lib/memview/TypedMemView.sol";
+import {MessageV2} from "./lib/messages/MessageV2.sol";
+import {BurnMessageV2} from "./lib/messages/BurnMessageV2.sol";
+import {Ownable2Step} from "./lib/roles/Ownable2Step.sol";
 
 /**
  * @title CCTPHookWrapper
