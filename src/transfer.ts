@@ -39,6 +39,7 @@ const AVALANCHE_FUJI_MESSAGE_TRANSMITTER =
 // Transfer Parameters
 const DESTINATION_ADDRESS = account.address; // Address to receive minted tokens on destination chain
 const AMOUNT = 100_000n; // Set transfer amount in 10^6 subunits (0.1 USDC; change as needed)
+const MIN_FINALITY_THRESHOLD = 1000; // minFinalityThreshold (1000 or less for Fast Transfer)
 const maxFee = 500n; // Set fast transfer max fee in 10^6 subunits (0.0005 USDC; change as needed)
 
 // Bytes32 Formatted Parameters
@@ -162,7 +163,7 @@ async function burnUSDC() {
         ETHEREUM_SEPOLIA_USDC,
         DESTINATION_CALLER_BYTES32,
         maxFee,
-        1000, // minFinalityThreshold (1000 or less for Fast Transfer)
+        MIN_FINALITY_THRESHOLD, // minFinalityThreshold (1000 or less for Fast Transfer)
       ],
     }),
   });
