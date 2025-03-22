@@ -68,7 +68,37 @@ const avalanchePublicClient = createPublicClient({
 });
 
 async function approveUSDC() {
-  console.log("1. Approving USDC transfer...");
+  console.log("1. Checking current USDC allowance...");
+
+  // Check current allowance
+  const allowance = await sepoliaPublicClient.readContract({
+    address: ETHEREUM_SEPOLIA_USDC,
+    abi: [
+      {
+        type: "function",
+        name: "allowance",
+        stateMutability: "view",
+        inputs: [
+          { name: "owner", type: "address" },
+          { name: "spender", type: "address" },
+        ],
+        outputs: [{ name: "", type: "uint256" }],
+      },
+    ],
+    functionName: "allowance",
+    args: [account.address, ETHEREUM_SEPOLIA_TOKEN_MESSENGER],
+  });
+
+  console.log(`Current allowance: ${allowance}`);
+
+  // If allowance is already sufficient, skip approval
+  if (allowance >= AMOUNT) {
+    console.log("Allowance is already sufficient. Skipping approval.\n");
+    return;
+  }
+
+  // Approve USDC transfer
+  console.log("Approving USDC transfer...");
   const approveTx = await sepoliaClient.sendTransaction({
     to: ETHEREUM_SEPOLIA_USDC,
     data: encodeFunctionData({
@@ -195,6 +225,13 @@ async function mintUSDC(attestation: Attestation) {
 }
 
 async function main() {
+  console.log(
+    "================================================\n" +
+      "Starting USDC transfer from Ethereum Sepolia to Avalanche Fuji...\n" +
+      "Make sure you have enough ETH, USDC in your wallet on Ethereum Sepolia\n" +
+      "and also AVAX in your wallet on Avalanche Fuji\n" +
+      "================================================\n"
+  );
   await approveUSDC();
   const burnTx = await burnUSDC();
   const attestation = await retrieveAttestation(burnTx);
